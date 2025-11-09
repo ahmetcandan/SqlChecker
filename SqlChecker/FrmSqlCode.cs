@@ -339,16 +339,15 @@ END
 
     private void SelectedSqlRow(int? lineNumber)
     {
-        if (lineNumber == null)
+        if (lineNumber == null || lineNumber < 1)
             return;
 
-        var selectedText = sqlInputBox.Lines[lineNumber.Value - 1];
-        int startIndex = sqlInputBox.Text.IndexOf(selectedText, StringComparison.OrdinalIgnoreCase);
-        if (startIndex >= 0)
-        {
-            sqlInputBox.Focus();
-            sqlInputBox.Select(startIndex, selectedText.Length);
-        }
+        var index = lineNumber.Value - 1;
+        int startIndex = 0;
+        if (index >= 1)
+            startIndex = sqlInputBox.Lines[..index].Sum(c => c.Length + 1) + 1;
+        sqlInputBox.Focus();
+        sqlInputBox.Select(startIndex, sqlInputBox.Lines[index].Length);
     }
 
     private async Task<string> GetEstimatedExecutionPlan()

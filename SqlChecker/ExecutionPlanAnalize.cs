@@ -6,7 +6,7 @@ public static class ExecutionPlanAnalize
 {
     public static List<string> AnalyzeExecutionPlan(string planXml)
     {
-        var scanOperations = new List<string>();
+        List<string> scanOperations = [];
 
         try
         {
@@ -15,10 +15,9 @@ public static class ExecutionPlanAnalize
 
             var namespaceManager = new XmlNamespaceManager(xmlDoc.NameTable);
             namespaceManager.AddNamespace("sql", "http://schemas.microsoft.com/sqlserver/2004/07/showplan");
-            string xPath = "//sql:RelOp/sql:IndexScan | //sql:RelOp/sql:TableScan";
+            string xPath = "//sql:RelOp[@PhysicalOp=\"Clustered Index Scan\"] | //sql:RelOp[@PhysicalOp=\"Index Scan\"] | //sql:RelOp[@PhysicalOp=\"Table Scan\"]";
 
             var scanNodes = xmlDoc.SelectNodes(xPath, namespaceManager);
-
             if (scanNodes == null || scanNodes.Count == 0)
             {
                 scanOperations.Add("Not found Execution Plan.");
@@ -27,33 +26,23 @@ public static class ExecutionPlanAnalize
 
             foreach (XmlNode node in scanNodes)
             {
-                if (node.SelectSingleNode("sql:SeekPredicates", namespaceManager) is not null)
-                    continue;
-
-                string operationType = node.LocalName;
-                var objectNode = node.SelectSingleNode("sql:Object", namespaceManager);
-
-                string tableAlias = "Unknown";
-                string tableName = "Unknown";
-                string schemeName = "";
-                string indexName = "-";
-
-                if (objectNode is not null)
+                if (node.Attributes?["PhysicalOp"]?.Value.Equals("Index Scan", StringComparison.OrdinalIgnoreCase) is true)
                 {
-                    tableAlias = objectNode.Attributes["Alias"]?.Value ?? tableAlias;
-                    tableName = objectNode.Attributes["Table"]?.Value ?? tableName;
-                    schemeName = objectNode.Attributes["Schema"]?.Value ?? string.Empty;
-                    indexName = objectNode.Attributes["Index"]?.Value ?? indexName;
-                    if (operationType == "IndexScan")
-                    {
-                        if (string.IsNullOrEmpty(indexName))
-                            indexName = "Clustered Index Scan (PK)";
-                    }
-                    else if (operationType == "TableScan")
-                        indexName = "No Index (Heap Table Scan)";
-
-                    string result = $"{operationType}: {(!string.IsNullOrEmpty(schemeName) ? $"{schemeName}." : "")}{tableName} ({tableAlias}), Indeks: {indexName}";
-                    scanOperations.Add(result);
+                    var objInfo = GetObjectInfoFromNode(node.SelectSingleNode("sql:IndexScan", namespaceManager)?.SelectSingleNode("sql:Object", namespaceManager));
+                    if (objInfo is not null)
+                        scanOperations.Add($"Index Scan (NonClustered): {(!string.IsNullOrEmpty(objInfo.SchemeName) ? $"{objInfo.SchemeName}." : "")}{objInfo.TableName} {(!string.IsNullOrEmpty(objInfo.TableAlias) ? $"({objInfo.TableAlias})" : string.Empty)}, Indeks: {objInfo.IndexName}");
+                }
+                else if (node.Attributes?["PhysicalOp"]?.Value.Equals("Clustered Index Scan", StringComparison.OrdinalIgnoreCase) is true)
+                {
+                    var objInfo = GetObjectInfoFromNode(node.SelectSingleNode("sql:IndexScan", namespaceManager)?.SelectSingleNode("sql:Object", namespaceManager));
+                    if (objInfo is not null)
+                        scanOperations.Add($"Clustered Index Scan: {(!string.IsNullOrEmpty(objInfo.SchemeName) ? $"{objInfo.SchemeName}." : "")}{objInfo.TableName} {(!string.IsNullOrEmpty(objInfo.TableAlias) ? $"({objInfo.TableAlias})" : string.Empty)}, Indeks: {objInfo.IndexName}");
+                }
+                else if (node.Attributes?["PhysicalOp"]?.Value.Equals("Table Scan", StringComparison.OrdinalIgnoreCase) is true)
+                {
+                    var objInfo = GetObjectInfoFromNode(node.SelectSingleNode("sql:TableScan", namespaceManager)?.SelectSingleNode("sql:Object", namespaceManager));
+                    if (objInfo is not null)
+                        scanOperations.Add($"Table Scan: {(!string.IsNullOrEmpty(objInfo.SchemeName) ? $"{objInfo.SchemeName}." : "")}{objInfo.TableName} {(!string.IsNullOrEmpty(objInfo.TableAlias) ? $"({objInfo.TableAlias})" : string.Empty)}");
                 }
             }
         }
@@ -63,5 +52,27 @@ public static class ExecutionPlanAnalize
         }
 
         return scanOperations;
+    }
+
+    private static ObjectInfo? GetObjectInfoFromNode(XmlNode? node)
+    {
+        if (node?.Attributes is null)
+            return null;
+
+        return new()
+        {
+            TableAlias = node.Attributes?["Alias"]?.Value,
+            TableName = node.Attributes?["Table"]?.Value,
+            SchemeName = node.Attributes?["Schema"]?.Value,
+            IndexName = node.Attributes?["Index"]?.Value
+        };
+    }
+
+    class ObjectInfo
+    {
+        public string? TableAlias { get; set; }
+        public string? TableName { get; set; }
+        public string? SchemeName { get; set; }
+        public string? IndexName { get; set; }
     }
 }
