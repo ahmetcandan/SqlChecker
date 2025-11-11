@@ -171,7 +171,7 @@ END
             if (errors.Count > 0)
             {
                 foreach (var error in errors)
-                    results.Add(new AnalysisResult("SQL Parse Hatası", AnalysisStatus.Error, error.Message, error.Line));
+                    results.Add(new AnalysisResult("SQL Parse error", AnalysisStatus.Error, error.Message, error.Line));
                 return results;
             }
 

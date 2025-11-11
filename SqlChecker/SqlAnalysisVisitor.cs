@@ -165,7 +165,7 @@ public class SqlAnalysisVisitor : TSqlFragmentVisitor
 
     public override void Visit(LikePredicate node)
     {
-        if (node.SecondExpression is StringLiteral literal && literal.Value.StartsWith('%'))
+        if (LikeValidation(node.SecondExpression))
         {
             Results.Add(new AnalysisResult(
                 "Scan Warning",
@@ -174,6 +174,18 @@ public class SqlAnalysisVisitor : TSqlFragmentVisitor
                 GetLine(node)));
         }
         base.Visit(node);
+    }
+
+    private bool LikeValidation(ScalarExpression expression)
+    {
+        if (expression is StringLiteral literal && literal.Value.StartsWith('%'))
+            return true;
+        else if (expression is ParenthesisExpression parenthesis)
+            return LikeValidation(parenthesis.Expression);
+        else if (expression is BinaryExpression binary)
+            return LikeValidation(binary.FirstExpression);
+
+        return false;
     }
 
     public override void Visit(WhereClause node)
