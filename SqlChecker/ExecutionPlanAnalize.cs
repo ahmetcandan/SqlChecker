@@ -4,9 +4,9 @@ namespace SqlChecker;
 
 public static class ExecutionPlanAnalize
 {
-    public static List<string> AnalyzeExecutionPlan(string planXml)
+    public static List<AnalysisResult> AnalyzeExecutionPlan(string planXml)
     {
-        List<string> scanOperations = [];
+        List<AnalysisResult> scanOperations = [];
 
         try
         {
@@ -20,7 +20,7 @@ public static class ExecutionPlanAnalize
             var scanNodes = xmlDoc.SelectNodes(xPath, namespaceManager);
             if (scanNodes == null || scanNodes.Count == 0)
             {
-                scanOperations.Add("Not found Execution Plan.");
+                scanOperations.Add(new("Execution Plan", AnalysisStatus.Error, "Not found Execution Plan."));
                 return scanOperations;
             }
 
@@ -30,25 +30,30 @@ public static class ExecutionPlanAnalize
                 {
                     var objInfo = GetObjectInfoFromNode(node.SelectSingleNode("sql:IndexScan", namespaceManager)?.SelectSingleNode("sql:Object", namespaceManager));
                     if (objInfo is not null)
-                        scanOperations.Add($"Index Scan (NonClustered): {(!string.IsNullOrEmpty(objInfo.SchemeName) ? $"{objInfo.SchemeName}." : "")}{objInfo.TableName} {(!string.IsNullOrEmpty(objInfo.TableAlias) ? $"({objInfo.TableAlias})" : string.Empty)}, Indeks: {objInfo.IndexName}");
+                        scanOperations.Add(new("Execution Plan", AnalysisStatus.Warning, $"Index Scan (NonClustered): {(!string.IsNullOrEmpty(objInfo.SchemeName) ? $"{objInfo.SchemeName}." : "")}{objInfo.TableName} {(!string.IsNullOrEmpty(objInfo.TableAlias) ? $"({objInfo.TableAlias})" : string.Empty)}, Indeks: {objInfo.IndexName}"));
                 }
                 else if (node.Attributes?["PhysicalOp"]?.Value.Equals("Clustered Index Scan", StringComparison.OrdinalIgnoreCase) is true)
                 {
                     var objInfo = GetObjectInfoFromNode(node.SelectSingleNode("sql:IndexScan", namespaceManager)?.SelectSingleNode("sql:Object", namespaceManager));
                     if (objInfo is not null)
-                        scanOperations.Add($"Clustered Index Scan: {(!string.IsNullOrEmpty(objInfo.SchemeName) ? $"{objInfo.SchemeName}." : "")}{objInfo.TableName} {(!string.IsNullOrEmpty(objInfo.TableAlias) ? $"({objInfo.TableAlias})" : string.Empty)}, Indeks: {objInfo.IndexName}");
+                        scanOperations.Add(new("Execution Plan", AnalysisStatus.Warning, $"Clustered Index Scan: {(!string.IsNullOrEmpty(objInfo.SchemeName) ? $"{objInfo.SchemeName}." : "")}{objInfo.TableName} {(!string.IsNullOrEmpty(objInfo.TableAlias) ? $"({objInfo.TableAlias})" : string.Empty)}, Indeks: {objInfo.IndexName}"));
                 }
                 else if (node.Attributes?["PhysicalOp"]?.Value.Equals("Table Scan", StringComparison.OrdinalIgnoreCase) is true)
                 {
                     var objInfo = GetObjectInfoFromNode(node.SelectSingleNode("sql:TableScan", namespaceManager)?.SelectSingleNode("sql:Object", namespaceManager));
                     if (objInfo is not null)
-                        scanOperations.Add($"Table Scan: {(!string.IsNullOrEmpty(objInfo.SchemeName) ? $"{objInfo.SchemeName}." : "")}{objInfo.TableName} {(!string.IsNullOrEmpty(objInfo.TableAlias) ? $"({objInfo.TableAlias})" : string.Empty)}");
+                        scanOperations.Add(new("Execution Plan", AnalysisStatus.Warning, $"Table Scan: {(!string.IsNullOrEmpty(objInfo.SchemeName) ? $"{objInfo.SchemeName}." : "")}{objInfo.TableName} {(!string.IsNullOrEmpty(objInfo.TableAlias) ? $"({objInfo.TableAlias})" : string.Empty)}"));
                 }
             }
+
+            var warningNode = xmlDoc.SelectSingleNode("//sql:Warnings", namespaceManager);
+            if (warningNode is not null)
+                foreach (XmlNode warning in warningNode.ChildNodes)
+                    scanOperations.Add(new(warning.Name, AnalysisStatus.Warning, $"{warning.Attributes?[0]?.Value} {warning.Attributes?[1]?.Value} {warning.Attributes?[2]?.Value}"));
         }
-        catch (Exception ex)
+        catch
         {
-            scanOperations.Add($"Error: XML parser. {ex.Message}");
+            scanOperations.Add(new("Execution Plan", AnalysisStatus.Error, $"Error: XML parser !"));
         }
 
         return scanOperations;

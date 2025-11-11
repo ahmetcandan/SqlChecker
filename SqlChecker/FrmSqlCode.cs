@@ -55,10 +55,10 @@ SELECT
 
                     WHEN 'uniqueidentifier' THEN '''00000000-0000-0000-0000-000000000000'''
                     
-                    ELSE '/* UYARI: VERI TIPI (' + t.name + ') TEST EDİLMELİ */ NULL'
+                    ELSE ' DEFAULT'
                 END
         END,
-        ',' + CHAR(13) + CHAR(10) -- Her parametre arasına virgül ve yeni satır ekle
+        ',' + CHAR(13) + CHAR(10)
     ) WITHIN GROUP (ORDER BY par.parameter_id)
 FROM
     sys.procedures p
@@ -96,14 +96,15 @@ END
 
     private async void BtnReview_Click(object sender, EventArgs e)
     {
+        SetCursorWait(true);
         var analysisResults = AnalyzeSql(sqlInputBox.Text);
         var xml = await GetEstimatedExecutionPlan();
         var result = ExecutionPlanAnalize.AnalyzeExecutionPlan(xml);
-        foreach (var item in result)
-            analysisResults.Add(new AnalysisResult("Estimated Execution Plan", "Uyarı", item));
+        analysisResults.AddRange(result);
 
         resultsGrid.DataSource = new BindingList<AnalysisResult>([.. analysisResults.OrderBy(c => c.LineNumber)]);
         HighlightResultsGrid();
+        SetCursorWait(false);
     }
 
     private void HighlightAllSql()
@@ -141,13 +142,13 @@ END
                 string status = row.Cells["Status"].Value.ToString() ?? string.Empty;
                 Color rowColor = Color.White;
 
-                if (status.Equals("Uyarı", StringComparison.OrdinalIgnoreCase) ||
-                    status.Equals("Başarısız", StringComparison.OrdinalIgnoreCase) ||
-                    status.Equals("Hata", StringComparison.OrdinalIgnoreCase))
+                if (status.Equals("Warning", StringComparison.OrdinalIgnoreCase) ||
+                    status.Equals("Fail", StringComparison.OrdinalIgnoreCase) ||
+                    status.Equals("Error", StringComparison.OrdinalIgnoreCase))
                     rowColor = Color.MistyRose;
-                else if (status.Equals("Başarılı", StringComparison.OrdinalIgnoreCase))
+                else if (status.Equals("Successfull", StringComparison.OrdinalIgnoreCase))
                     rowColor = Color.Honeydew;
-                else if (status.Equals("Bilgi", StringComparison.OrdinalIgnoreCase))
+                else if (status.Equals("Info", StringComparison.OrdinalIgnoreCase))
                     rowColor = Color.LightYellow;
 
                 row.DefaultCellStyle.BackColor = rowColor;
@@ -170,7 +171,7 @@ END
             if (errors.Count > 0)
             {
                 foreach (var error in errors)
-                    results.Add(new AnalysisResult("SQL Parse Hatası", "Hata", error.Message, error.Line));
+                    results.Add(new AnalysisResult("SQL Parse Hatası", AnalysisStatus.Error, error.Message, error.Line));
                 return results;
             }
 
@@ -180,41 +181,41 @@ END
             if (visitor.IsProcedure && !visitor.HasSetNoCountOn)
                 results.Add(new AnalysisResult(
                     "SET NOCOUNT ON",
-                    "Başarısız",
-                    "Stored Procedure 'SET NOCOUNT ON' içermiyor. Eklenmesi önerilir."));
+                    AnalysisStatus.Failed,
+                    "Stored Procedure does not contain ‘SET NOCOUNT ON’. It is recommended to add it."));
             else if (visitor.IsProcedure && visitor.HasSetNoCountOn)
                 results.Add(new AnalysisResult(
                     "SET NOCOUNT ON",
-                    "Başarılı",
-                    "Stored Procedure 'SET NOCOUNT ON' içeriyor."));
+                    AnalysisStatus.Successfull,
+                    "Stored Procedure contains ‘SET NOCOUNT ON’."));
 
             results.AddRange(visitor.Results);
 
             if (visitor.FoundTempTables.Count > 0)
                 foreach (var (TableName, Line) in visitor.FoundTempTables)
                     results.Add(new AnalysisResult(
-                        "Geçici Tablo Kullanımı",
-                        "Bilgi",
-                        $"Geçici tablo kullanımı tespit edildi: '{TableName}'",
+                        "#TempTable usage",
+                        AnalysisStatus.Info,
+                        $"#TempTable usage detected: '{TableName}'",
                         Line));
 
 
             if (visitor.FoundTableVariables.Count > 0)
                 foreach (var (VariableName, Line) in visitor.FoundTableVariables)
                     results.Add(new AnalysisResult(
-                        "Tablo Değişkeni Kullanımı",
-                        "Bilgi",
-                        $"Tablo değişkeni tanımlaması tespit edildi: '{VariableName}'",
+                        "@VariableTable usage",
+                        AnalysisStatus.Info,
+                        $"@VariableTable usage detected: '{VariableName}'",
                         Line));
         }
         catch (Exception ex)
         {
-            results.Add(new AnalysisResult("Genel Hata", "Hata", $"ScriptDom analizi sırasında hata: {ex.Message}", 0));
+            results.Add(new AnalysisResult("General Error", AnalysisStatus.Error, $"ScriptDom analize error: {ex.Message}", 0));
         }
 
 
         if (results.Count == 0)
-            results.Add(new AnalysisResult("Genel", "Bilgi", "ScriptDom analizi tamamlandı. Belirgin bir sorun bulunamadı.", 0));
+            results.Add(new AnalysisResult("General", AnalysisStatus.Info, "ScriptDom analize completed. No apparent problem has been found.", 0));
 
         return results;
     }
@@ -230,11 +231,11 @@ END
         }
         catch (SqlException ex)
         {
-            MessageBox.Show($"SQL Hatası oluştu: {ex.Message}", "Error");
+            MessageBox.Show($"SQL error: {ex.Message}", "Error");
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Genel bir hata oluştu: {ex.Message}", "Error");
+            MessageBox.Show($"General error: {ex.Message}", "Error");
         }
 
         return [];
@@ -244,9 +245,9 @@ END
     {
         using var connection = new SqlConnection(_settings?.ConnectionString);
         using var command = new SqlCommand(_sqlQuery_SpList, connection);
-        await connection.OpenAsync();
+        await Task.Run(connection.OpenAsync);
         using var reader = await command.ExecuteReaderAsync(CommandBehavior.CloseConnection);
-        while (await reader.ReadAsync())
+        while (await Task.Run(reader.ReadAsync))
         {
             yield return new StoredProcedureInfo
             {
@@ -263,9 +264,9 @@ END
             using var connection = new SqlConnection(_settings?.ConnectionString);
             using var command = new SqlCommand(_sqlQuery_SpDefinition, connection);
             command.Parameters.AddWithValue("@objName", $"{scheme}.{objName}");
-            await connection.OpenAsync();
-            using var reader = await command.ExecuteReaderAsync(CommandBehavior.CloseConnection);
-            if (await reader.ReadAsync())
+            await Task.Run(connection.OpenAsync);
+            using var reader = await Task.Run(() => command.ExecuteReaderAsync(CommandBehavior.CloseConnection));
+            if (await Task.Run(reader.ReadAsync))
                 return reader.GetString(reader.GetOrdinal("Definition"));
         }
         catch (SqlException ex)
@@ -284,11 +285,29 @@ END
 
     private async void FrmSqlCode_Load(object sender, EventArgs e)
     {
-        var json = File.ReadAllText("settings.json");
-        _settings = System.Text.Json.JsonSerializer.Deserialize<Settings>(json) ?? new Settings();
+        SetCursorWait(true);
+        if (File.Exists("settings.json"))
+        {
+            var json = await Task.Run(() => File.ReadAllTextAsync("settings.json"));
+            _settings = System.Text.Json.JsonSerializer.Deserialize<Settings>(json) ?? new Settings();
+
+        }
+        else
+        {
+            FrmSettings frmSettings = new();
+            if (frmSettings.ShowDialog() == DialogResult.OK)
+                _settings = frmSettings.Settings;
+            else
+            {
+                MessageBox.Show("setting.json file not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Close();
+                return;
+            }
+        }
         _spList = await GetSchemaAndStoredProcedures();
         cmbScheme.Items.AddRange([.. _spList.Select(sp => sp.SchemaName).Distinct()]);
         txtLineNumber.SelectionProtected = false;
+        SetCursorWait(false);
     }
 
     private void CmbScheme_SelectedIndexChanged(object sender, EventArgs e)
@@ -314,15 +333,13 @@ END
         var position = GetScrollPos(sqlInputBox.Handle, 1);
         _ = SetScrollPos(txtLineNumber.Handle, 1, position, true);
         _ = PostMessageA(txtLineNumber.Handle, 0x115, 4 + (position << 16), 0);
-        if (sqlInputBox.ScrollBars is RichTextBoxScrollBars.Both or RichTextBoxScrollBars.Horizontal)
-            txtLineNumber.ScrollBars = RichTextBoxScrollBars.Horizontal;
-        else
-            txtLineNumber.ScrollBars = RichTextBoxScrollBars.None;
     }
 
     private async void BtnRefreshObj_Click(object sender, EventArgs e)
     {
+        SetCursorWait(true);
         await GetObjectText();
+        SetCursorWait(false);
     }
 
     private void ResultsGrid_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
@@ -353,26 +370,63 @@ END
     private async Task<string> GetEstimatedExecutionPlan()
     {
         using var connection = new SqlConnection(_settings?.ConnectionString);
-        await connection.OpenAsync();
+        await Task.Run(connection.OpenAsync);
 
         using var execCommand = new SqlCommand(_sqlQuery_SpExecWithParameter, connection);
         execCommand.Parameters.AddWithValue("@SpName", cmbObjectName.Text);
         execCommand.Parameters.AddWithValue("@SchemaName", cmbScheme.Text);
-        var commandText = await execCommand.ExecuteScalarAsync();
+        var commandText = await Task.Run(execCommand.ExecuteScalarAsync);
 
         using var xmlOnCommand = new SqlCommand("SET SHOWPLAN_XML ON;", connection);
-        await xmlOnCommand.ExecuteNonQueryAsync();
+        await Task.Run(xmlOnCommand.ExecuteNonQueryAsync);
 
         using var command = new SqlCommand(commandText?.ToString(), connection);
-        using XmlReader reader = await command.ExecuteXmlReaderAsync();
+        using XmlReader reader = await Task.Run(command.ExecuteXmlReaderAsync);
         var sb = new StringBuilder();
-        while (await reader.ReadAsync())
+        while (await Task.Run(reader.ReadAsync))
             if (reader.NodeType == XmlNodeType.Element || reader.NodeType == XmlNodeType.Text)
                 sb.Append(reader.ReadOuterXml());
 
         using var xmlOffCommand = new SqlCommand("SET SHOWPLAN_XML OFF;", connection);
-        await xmlOffCommand.ExecuteNonQueryAsync();
+        await Task.Run(xmlOffCommand.ExecuteNonQueryAsync);
 
         return sb.ToString();
+    }
+
+    private void SetCursorWait(bool isWait)
+    {
+        Cursor = isWait ? Cursors.WaitCursor : Cursors.Default;
+        sqlInputBox.Cursor = Cursor;
+        txtLineNumber.Cursor = Cursor;
+        splitContainer1.Cursor = Cursor;
+        resultsGrid.Cursor = Cursor;
+        cmbObjectName.Cursor = Cursor;
+        cmbScheme.Cursor = Cursor;
+        btnRefreshObj.Cursor = Cursor;
+        btnReview.Cursor = Cursor;
+        btnRefreshObj.Enabled = !isWait;
+        btnReview.Enabled = !isWait;
+    }
+
+    private async void BtnSchemeRefresh_Click(object sender, EventArgs e)
+    {
+        SetCursorWait(true);
+        _spList = await GetSchemaAndStoredProcedures();
+        cmbScheme.Items.Clear();
+        cmbScheme.Items.AddRange([.. _spList.Select(sp => sp.SchemaName).Distinct()]);
+        txtLineNumber.SelectionProtected = false;
+        SetCursorWait(false);
+    }
+
+    private void FrmSqlCode_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Control && e.KeyCode == Keys.R)
+            splitContainer1.Panel2Collapsed = !splitContainer1.Panel2Collapsed;
+    }
+
+    private void SqlInputBox_KeyUp(object sender, KeyEventArgs e)
+    {
+        if (e.KeyData == (Keys.Control | Keys.R))
+            splitContainer1.Panel2Collapsed = !splitContainer1.Panel2Collapsed;
     }
 }

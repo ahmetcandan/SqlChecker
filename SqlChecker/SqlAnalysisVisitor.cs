@@ -91,17 +91,17 @@ public class SqlAnalysisVisitor : TSqlFragmentVisitor
             if (!hasNoLock && (_updatedTable is null || _updatedTable != (string.IsNullOrEmpty(node.Alias?.Value) ? node.SchemaObject.BaseIdentifier.Value : node.Alias.Value)))
             {
                 Results.Add(new AnalysisResult(
-                    "NOLOCK Eksik",
-                    "Uyarı",
-                    $"'{node.SchemaObject.BaseIdentifier.Value}' tablosu için 'WITH (NOLOCK)' ifadesi kullanılmamış. SELECT sorgularında performans için kullanılması önerilir.",
+                    "NOLOCK missing",
+                    AnalysisStatus.Warning,
+                    $"The ‘WITH (NOLOCK)’ clause has not been used for the ‘{node.SchemaObject.BaseIdentifier.Value}’ table. It is recommended for use in SELECT queries for performance.",
                     GetLine(node)));
             }
             else if (hasNoLock && _updatedTable is not null && _updatedTable == (string.IsNullOrEmpty(node.Alias?.Value) ? node.SchemaObject.BaseIdentifier.Value : node.Alias.Value))
             {
                 Results.Add(new AnalysisResult(
-                    "NOLOCK eklenemez",
-                    "Uyarı",
-                    $"'{node.SchemaObject.BaseIdentifier.Value}' tablosu Update gördüğü için 'WITH (NOLOCK)' ifadesi kullanılamaz.",
+                    "NOLOCK cannot be added",
+                    AnalysisStatus.Warning,
+                    $"The ‘{node.SchemaObject.BaseIdentifier.Value}’ table cannot use the ‘WITH (NOLOCK)’ clause because it has been updated.",
                     GetLine(node)));
             }
         }
@@ -141,9 +141,9 @@ public class SqlAnalysisVisitor : TSqlFragmentVisitor
             if (columnFinder.FoundColumn)
             {
                 Results.Add(new AnalysisResult(
-                    "Potansiyel Scan",
-                    "Uyarı",
-                    $"'WHERE' içinde sütun üzerinde '{node.FunctionName.Value}' fonksiyonu kullanımı SARG-able olmayabilir.",
+                    "Scan Warning",
+                    AnalysisStatus.Warning,
+                    $"The use of the ‘{node.FunctionName.Value}’ function in the ‘WHERE’ clause may not be SARG-able.",
                     GetLine(node)));
             }
         }
@@ -155,9 +155,9 @@ public class SqlAnalysisVisitor : TSqlFragmentVisitor
         if (!_countStarLines.Contains(node.StartLine))
         {
             Results.Add(new AnalysisResult(
-                "SELECT * Kullanımı",
-                "Uyarı",
-                "'SELECT *' kullanımı bulundu. İhtiyaç duyulan kolonları belirtin.",
+                "SELECT * using",
+                AnalysisStatus.Warning,
+                "The ‘Select *’ is in use. Please specify the required columns.",
                 GetLine(node)));
         }
         base.Visit(node);
@@ -168,9 +168,9 @@ public class SqlAnalysisVisitor : TSqlFragmentVisitor
         if (node.SecondExpression is StringLiteral literal && literal.Value.StartsWith('%'))
         {
             Results.Add(new AnalysisResult(
-                "Potansiyel Scan",
-                "Uyarı",
-                "Sütun başında joker (LIKE '%...') kullanımı bulundu. Bu, Index Seek yerine Index Scan'e neden olabilir.",
+                "Scan Warning",
+                AnalysisStatus.Warning,
+                "Using (Like ‘%xx’) causes a potential table/index scan.",
                 GetLine(node)));
         }
         base.Visit(node);
