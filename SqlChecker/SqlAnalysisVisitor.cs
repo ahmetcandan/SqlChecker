@@ -176,7 +176,7 @@ public class SqlAnalysisVisitor : TSqlFragmentVisitor
         base.Visit(node);
     }
 
-    private bool LikeValidation(ScalarExpression expression)
+    private static bool LikeValidation(ScalarExpression expression)
     {
         if (expression is StringLiteral literal && literal.Value.StartsWith('%'))
             return true;
