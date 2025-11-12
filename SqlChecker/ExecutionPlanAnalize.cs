@@ -49,7 +49,12 @@ public static class ExecutionPlanAnalize
             var warningNode = xmlDoc.SelectSingleNode("//sql:Warnings", namespaceManager);
             if (warningNode is not null)
                 foreach (XmlNode warning in warningNode.ChildNodes)
-                    scanOperations.Add(new(warning.Name, AnalysisStatus.Warning, $"{warning.Attributes?[0]?.Value} {warning.Attributes?[1]?.Value} {warning.Attributes?[2]?.Value}"));
+             		{
+																string at0 = warning.Attributes?[0]?.Value ?? string.Empty;
+string at1 = warning.Attributes?[1]?.Value ?? string.Empty;
+string at2 = warning.Attributes?[2]?.Value ?? string.Empty;
+      scanOperations.Add(new(warning.Name, AnalysisStatus.Warning, $"{at0} {at1} {at2}"));
+														} 
         }
         catch
         {
