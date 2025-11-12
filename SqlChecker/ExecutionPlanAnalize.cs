@@ -50,9 +50,9 @@ public static class ExecutionPlanAnalize
             if (warningNode is not null)
                 foreach (XmlNode warning in warningNode.ChildNodes)
              		{
-																string at0 = warning.Attibutes.Count > 0 ? warning.Attributes?[0]?.Value : string.Empty;
-string at1 = warning.Attibutes.Count > 1 ? warning.Attributes?[1]?.Value : string.Empty;
-string at2 = warning.Attibutes.Count > 2 ? warning.Attributes?[2]?.Value : string.Empty;
+																string at0 = warning.Attibutes?.Count > 0 ? warning.Attributes[0].Value : string.Empty;
+string at1 = warning.Attibutes?.Count > 1 ? warning.Attributes[1].Value : string.Empty;
+string at2 = warning.Attibutes?.Count > 2 ? warning.Attributes[2].Value : string.Empty;
       scanOperations.Add(new(warning.Name, AnalysisStatus.Warning, $"{at0} {at1} {at2}"));
 														} 
         }
