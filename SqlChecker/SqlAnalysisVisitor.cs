@@ -3,7 +3,7 @@ using System.Data;
 
 namespace SqlChecker;
 
-public class SqlAnalysisVisitor : TSqlFragmentVisitor
+internal class SqlAnalysisVisitor : TSqlFragmentVisitor
 {
     public List<AnalysisResult> Results { get; } = [];
     public List<(string TableName, int Line)> FoundTempTables { get; } = [];

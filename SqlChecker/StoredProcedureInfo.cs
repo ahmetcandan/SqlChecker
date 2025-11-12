@@ -1,6 +1,6 @@
 ﻿namespace SqlChecker;
 
-public class StoredProcedureInfo
+internal class StoredProcedureInfo
 {
     public string SchemaName { get; set; } = string.Empty;
     public string StoredProcedureName { get; set; } = string.Empty;

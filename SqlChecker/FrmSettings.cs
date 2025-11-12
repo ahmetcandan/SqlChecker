@@ -7,7 +7,13 @@ public partial class FrmSettings : Form
     public FrmSettings(Settings? settings = null)
     {
         InitializeComponent();
-        Settings = settings ?? new();
+        if (settings is not null)
+            Settings = new()
+            {
+                ConnectionString = settings.ConnectionString
+            };
+        else
+            Settings = new();
         DialogResult = DialogResult.Cancel;
     }
 

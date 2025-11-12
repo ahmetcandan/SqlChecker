@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FrmSqlCode));
             btnReview = new Button();
             sqlInputBox = new RichTextBox();
@@ -38,17 +39,24 @@
             btnRefreshObj = new Button();
             splitContainer1 = new SplitContainer();
             btnSchemeRefresh = new Button();
+            notifyIcon1 = new NotifyIcon(components);
+            notifyMenu = new ContextMenuStrip(components);
+            menuSettings = new ToolStripMenuItem();
+            toolStripSeparator1 = new ToolStripSeparator();
+            menuExit = new ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)resultsGrid).BeginInit();
             ((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
             splitContainer1.Panel1.SuspendLayout();
             splitContainer1.Panel2.SuspendLayout();
             splitContainer1.SuspendLayout();
+            notifyMenu.SuspendLayout();
             SuspendLayout();
             // 
             // btnReview
             // 
             btnReview.BackgroundImage = Properties.Resources.analysis;
             btnReview.BackgroundImageLayout = ImageLayout.Zoom;
+            btnReview.Enabled = false;
             btnReview.Location = new Point(348, 1);
             btnReview.Name = "btnReview";
             btnReview.Size = new Size(43, 33);
@@ -60,6 +68,7 @@
             // 
             sqlInputBox.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             sqlInputBox.BackColor = Color.White;
+            sqlInputBox.Cursor = Cursors.IBeam;
             sqlInputBox.Font = new Font("Hermit", 9.75F);
             sqlInputBox.Location = new Point(33, 35);
             sqlInputBox.Name = "sqlInputBox";
@@ -126,6 +135,7 @@
             // 
             btnRefreshObj.BackgroundImage = Properties.Resources.refresh1;
             btnRefreshObj.BackgroundImageLayout = ImageLayout.Zoom;
+            btnRefreshObj.Enabled = false;
             btnRefreshObj.Location = new Point(135, 5);
             btnRefreshObj.Name = "btnRefreshObj";
             btnRefreshObj.Size = new Size(27, 23);
@@ -168,6 +178,38 @@
             btnSchemeRefresh.UseVisualStyleBackColor = true;
             btnSchemeRefresh.Click += BtnSchemeRefresh_Click;
             // 
+            // notifyIcon1
+            // 
+            notifyIcon1.BalloonTipIcon = ToolTipIcon.Info;
+            notifyIcon1.ContextMenuStrip = notifyMenu;
+            notifyIcon1.Icon = (Icon)resources.GetObject("notifyIcon1.Icon");
+            notifyIcon1.Text = "notifyIcon1";
+            notifyIcon1.Visible = true;
+            // 
+            // notifyMenu
+            // 
+            notifyMenu.Items.AddRange(new ToolStripItem[] { menuSettings, toolStripSeparator1, menuExit });
+            notifyMenu.Name = "notifyMenu";
+            notifyMenu.Size = new Size(181, 76);
+            notifyMenu.ItemClicked += NotifyMenu_ItemClicked;
+            // 
+            // menuSettings
+            // 
+            menuSettings.Name = "menuSettings";
+            menuSettings.Size = new Size(180, 22);
+            menuSettings.Text = "Settings";
+            // 
+            // toolStripSeparator1
+            // 
+            toolStripSeparator1.Name = "toolStripSeparator1";
+            toolStripSeparator1.Size = new Size(177, 6);
+            // 
+            // menuExit
+            // 
+            menuExit.Name = "menuExit";
+            menuExit.Size = new Size(180, 22);
+            menuExit.Text = "Exit";
+            // 
             // FrmSqlCode
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
@@ -187,6 +229,7 @@
             splitContainer1.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)splitContainer1).EndInit();
             splitContainer1.ResumeLayout(false);
+            notifyMenu.ResumeLayout(false);
             ResumeLayout(false);
         }
 
@@ -201,5 +244,10 @@
         private Button btnRefreshObj;
         private SplitContainer splitContainer1;
         private Button btnSchemeRefresh;
+        private NotifyIcon notifyIcon1;
+        private ContextMenuStrip notifyMenu;
+        private ToolStripMenuItem menuSettings;
+        private ToolStripSeparator toolStripSeparator1;
+        private ToolStripMenuItem menuExit;
     }
 }

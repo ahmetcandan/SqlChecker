@@ -2,7 +2,7 @@
 
 namespace SqlChecker;
 
-public class ColumnFinderVisitor : TSqlFragmentVisitor
+internal class ColumnFinderVisitor : TSqlFragmentVisitor
 {
     public bool FoundColumn { get; private set; } = false;
 

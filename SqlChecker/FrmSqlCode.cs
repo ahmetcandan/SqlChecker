@@ -5,6 +5,7 @@ using System.Data;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Xml;
 
 namespace SqlChecker;
@@ -96,6 +97,9 @@ END
 
     private async void BtnReview_Click(object sender, EventArgs e)
     {
+        if (string.IsNullOrEmpty(cmbObjectName.Text))
+            return;
+
         SetCursorWait(true);
         var analysisResults = AnalyzeSql(sqlInputBox.Text);
         var xml = await GetEstimatedExecutionPlan();
@@ -285,6 +289,13 @@ END
 
     private async void FrmSqlCode_Load(object sender, EventArgs e)
     {
+        btnRefreshObj.Enabled = false;
+        btnReview.Enabled = false;
+        await FormLoad();
+    }
+
+    private async Task FormLoad()
+    {
         SetCursorWait(true);
         if (File.Exists("settings.json"))
         {
@@ -305,6 +316,7 @@ END
             }
         }
         _spList = await GetSchemaAndStoredProcedures();
+        cmbScheme.Items.Clear();
         cmbScheme.Items.AddRange([.. _spList.Select(sp => sp.SchemaName).Distinct()]);
         txtLineNumber.SelectionProtected = false;
         SetCursorWait(false);
@@ -319,6 +331,8 @@ END
     private async void CmbObjectName_SelectedIndexChanged(object sender, EventArgs e)
     {
         await GetObjectText();
+        btnRefreshObj.Enabled = !string.IsNullOrEmpty(cmbObjectName.Text);
+        btnReview.Enabled = !string.IsNullOrEmpty(cmbObjectName.Text);
     }
 
     private async Task GetObjectText()
@@ -337,6 +351,9 @@ END
 
     private async void BtnRefreshObj_Click(object sender, EventArgs e)
     {
+        if (string.IsNullOrEmpty(cmbObjectName.Text))
+            return;
+
         SetCursorWait(true);
         await GetObjectText();
         SetCursorWait(false);
@@ -396,16 +413,16 @@ END
     private void SetCursorWait(bool isWait)
     {
         Cursor = isWait ? Cursors.WaitCursor : Cursors.Default;
-        sqlInputBox.Cursor = Cursor;
-        txtLineNumber.Cursor = Cursor;
-        splitContainer1.Cursor = Cursor;
-        resultsGrid.Cursor = Cursor;
-        cmbObjectName.Cursor = Cursor;
-        cmbScheme.Cursor = Cursor;
-        btnRefreshObj.Cursor = Cursor;
-        btnReview.Cursor = Cursor;
-        btnRefreshObj.Enabled = !isWait;
-        btnReview.Enabled = !isWait;
+        sqlInputBox.Cursor = isWait ? Cursors.WaitCursor : Cursors.IBeam;
+        txtLineNumber.Cursor = isWait ? Cursors.WaitCursor : Cursors.Default;
+        splitContainer1.Cursor = isWait ? Cursors.WaitCursor : Cursors.Default;
+        resultsGrid.Cursor = isWait ? Cursors.WaitCursor : Cursors.Default;
+        cmbObjectName.Cursor = isWait ? Cursors.WaitCursor : Cursors.Default;
+        cmbScheme.Cursor = isWait ? Cursors.WaitCursor : Cursors.Default;
+        btnRefreshObj.Cursor = isWait ? Cursors.WaitCursor : Cursors.Default;
+        btnReview.Cursor = isWait ? Cursors.WaitCursor : Cursors.Default;
+        btnRefreshObj.Enabled = !isWait && !string.IsNullOrEmpty(cmbObjectName.Text);
+        btnReview.Enabled = !isWait && !string.IsNullOrEmpty(cmbObjectName.Text);
     }
 
     private async void BtnSchemeRefresh_Click(object sender, EventArgs e)
@@ -428,5 +445,20 @@ END
     {
         if (e.KeyData == (Keys.Control | Keys.R))
             splitContainer1.Panel2Collapsed = !splitContainer1.Panel2Collapsed;
+    }
+
+    private async void NotifyMenu_ItemClicked(object sender, ToolStripItemClickedEventArgs e)
+    {
+        if (e.ClickedItem?.Name == "menuSettings")
+        {
+            FrmSettings frmSettings = new(_settings);
+            if (frmSettings.ShowDialog() == DialogResult.OK)
+            {
+                _settings = frmSettings.Settings;
+                await FormLoad();
+            }
+        }
+        else if (e.ClickedItem?.Name == "menuExit")
+            Application.Exit();
     }
 }
