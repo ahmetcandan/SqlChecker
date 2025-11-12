@@ -7,7 +7,7 @@ public class SqlAnalysisVisitor : TSqlFragmentVisitor
 {
     public List<AnalysisResult> Results { get; } = [];
     public List<(string TableName, int Line)> FoundTempTables { get; } = [];
-    public List<(string VariableName, int Line)> FoundTableVariables { get; } = new List<(string, int)>();
+    public List<(string VariableName, int Line)> FoundTableVariables { get; } = [];
 
     public bool IsProcedure { get; private set; } = false;
 

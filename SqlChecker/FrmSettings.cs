@@ -2,26 +2,25 @@
 
 public partial class FrmSettings : Form
 {
-    private readonly Settings _settings;
-    public Settings Settings => _settings;
+    public Settings Settings { get; }
 
     public FrmSettings(Settings? settings = null)
     {
         InitializeComponent();
-        _settings = settings ?? new();
+        Settings = settings ?? new();
         DialogResult = DialogResult.Cancel;
     }
 
     private async void BtnSave_Click(object sender, EventArgs e)
     {
-        _settings.ConnectionString = txtConnectionString.Text;
-        await File.WriteAllTextAsync("settings.json", System.Text.Json.JsonSerializer.Serialize(_settings));
+        Settings.ConnectionString = txtConnectionString.Text;
+        await File.WriteAllTextAsync("settings.json", System.Text.Json.JsonSerializer.Serialize(Settings));
         DialogResult = DialogResult.OK;
-        this.Close();
+        Close();
     }
 
     private void FrmSettings_Load(object sender, EventArgs e)
     {
-        txtConnectionString.Text = _settings?.ConnectionString;
+        txtConnectionString.Text = Settings?.ConnectionString;
     }
 }

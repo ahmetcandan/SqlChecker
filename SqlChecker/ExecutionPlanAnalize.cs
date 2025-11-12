@@ -66,19 +66,18 @@ public static class ExecutionPlanAnalize
 
     private static ObjectInfo? GetObjectInfoFromNode(XmlNode? node)
     {
-        if (node?.Attributes is null)
-            return null;
-
-        return new()
-        {
-            TableAlias = node.Attributes?["Alias"]?.Value,
-            TableName = node.Attributes?["Table"]?.Value,
-            SchemeName = node.Attributes?["Schema"]?.Value,
-            IndexName = node.Attributes?["Index"]?.Value
-        };
+        return node?.Attributes is null
+            ? null
+            : new()
+            {
+                TableAlias = node.Attributes?["Alias"]?.Value,
+                TableName = node.Attributes?["Table"]?.Value,
+                SchemeName = node.Attributes?["Schema"]?.Value,
+                IndexName = node.Attributes?["Index"]?.Value
+            };
     }
 
-    class ObjectInfo
+    private class ObjectInfo
     {
         public string? TableAlias { get; set; }
         public string? TableName { get; set; }
