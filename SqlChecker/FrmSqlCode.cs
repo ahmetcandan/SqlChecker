@@ -131,15 +131,6 @@ END
         txtLineNumber.Text = string.Join(Environment.NewLine, Enumerable.Range(1, sqlInputBox.Lines.Length).Select(i => i.ToString()));
     }
 
-    private void HighlightMatches(Regex regex, Color color)
-    {
-        foreach (Match match in regex.Matches(sqlInputBox.Text))
-        {
-            sqlInputBox.Select(match.Index, match.Length);
-            sqlInputBox.SelectionColor = color;
-        }
-    }
-
     private void HighlightResultsGrid()
     {
         foreach (DataGridViewRow row in resultsGrid.Rows)
