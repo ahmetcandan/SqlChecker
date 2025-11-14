@@ -3,7 +3,7 @@ using System.Data;
 
 namespace SqlChecker;
 
-internal class SqlAnalysisVisitor : TSqlFragmentVisitor
+internal class SqlAnalysisVisitor(Settings settings) : TSqlFragmentVisitor
 {
     public List<AnalysisResult> Results { get; } = [];
     public List<(string TableName, int Line)> FoundTempTables { get; } = [];
@@ -88,11 +88,11 @@ internal class SqlAnalysisVisitor : TSqlFragmentVisitor
                 }
             }
 
-            if (!hasNoLock && (_updatedTable is null || _updatedTable != (string.IsNullOrEmpty(node.Alias?.Value) ? node.SchemaObject.BaseIdentifier.Value : node.Alias.Value)))
+            if (!hasNoLock && settings.Rules.NoLockRequired != AnalysisStatus.Passed && (_updatedTable is null || _updatedTable != (string.IsNullOrEmpty(node.Alias?.Value) ? node.SchemaObject.BaseIdentifier.Value : node.Alias.Value)))
             {
                 Results.Add(new AnalysisResult(
                     "NOLOCK missing",
-                    AnalysisStatus.Warning,
+                    settings.Rules.NoLockRequired,
                     $"The ‘WITH (NOLOCK)’ clause has not been used for the ‘{node.SchemaObject.BaseIdentifier.Value}’ table. It is recommended for use in SELECT queries for performance.",
                     GetLine(node)));
             }
@@ -100,7 +100,7 @@ internal class SqlAnalysisVisitor : TSqlFragmentVisitor
             {
                 Results.Add(new AnalysisResult(
                     "NOLOCK cannot be added",
-                    AnalysisStatus.Warning,
+                    AnalysisStatus.Failed,
                     $"The ‘{node.SchemaObject.BaseIdentifier.Value}’ table cannot use the ‘WITH (NOLOCK)’ clause because it has been updated.",
                     GetLine(node)));
             }
@@ -138,11 +138,11 @@ internal class SqlAnalysisVisitor : TSqlFragmentVisitor
                 param.Accept(columnFinder);
             }
 
-            if (columnFinder.FoundColumn)
+            if (columnFinder.FoundColumn && settings.Rules.UsingWhereInFunc != AnalysisStatus.Passed)
             {
                 Results.Add(new AnalysisResult(
                     "Scan Warning",
-                    AnalysisStatus.Warning,
+                    settings.Rules.UsingWhereInFunc,
                     $"The use of the ‘{node.FunctionName.Value}’ function in the ‘WHERE’ clause may not be SARG-able.",
                     GetLine(node)));
             }
@@ -152,11 +152,11 @@ internal class SqlAnalysisVisitor : TSqlFragmentVisitor
 
     public override void Visit(SelectStarExpression node)
     {
-        if (!_countStarLines.Contains(node.StartLine))
+        if (!_countStarLines.Contains(node.StartLine) && settings.Rules.UsingSelectStar != AnalysisStatus.Passed)
         {
             Results.Add(new AnalysisResult(
                 "SELECT * using",
-                AnalysisStatus.Warning,
+                settings.Rules.UsingSelectStar,
                 "The ‘Select *’ is in use. Please specify the required columns.",
                 GetLine(node)));
         }
@@ -165,11 +165,11 @@ internal class SqlAnalysisVisitor : TSqlFragmentVisitor
 
     public override void Visit(LikePredicate node)
     {
-        if (LikeValidation(node.SecondExpression))
+        if (LikeValidation(node.SecondExpression) && settings.Rules.UsingWhereInLike != AnalysisStatus.Passed)
         {
             Results.Add(new AnalysisResult(
                 "Scan Warning",
-                AnalysisStatus.Warning,
+                settings.Rules.UsingWhereInLike,
                 "Using (Like ‘%xx’) causes a potential table/index scan.",
                 GetLine(node)));
         }

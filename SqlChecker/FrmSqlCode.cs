@@ -113,6 +113,7 @@ END
 
     private void HighlightAllSql()
     {
+        /*
         int selectionStart = sqlInputBox.SelectionStart;
         int selectionLength = sqlInputBox.SelectionLength;
 
@@ -125,6 +126,8 @@ END
 
         sqlInputBox.Select(selectionStart, selectionLength);
         sqlInputBox.SelectionColor = Color.Black;
+        */
+        SqlHighlighter.HighlightSql(sqlInputBox);
         txtLineNumber.Text = string.Join(Environment.NewLine, Enumerable.Range(1, sqlInputBox.Lines.Length).Select(i => i.ToString()));
     }
 
@@ -161,7 +164,7 @@ END
         resultsGrid.AutoResizeColumns();
     }
 
-    private static List<AnalysisResult> AnalyzeSql(string sqlText)
+    private List<AnalysisResult> AnalyzeSql(string sqlText)
     {
         var results = new List<AnalysisResult>();
         var parser = new TSql160Parser(false);
@@ -179,15 +182,15 @@ END
                 return results;
             }
 
-            var visitor = new SqlAnalysisVisitor();
+            var visitor = new SqlAnalysisVisitor(_settings!);
             fragment.Accept(visitor);
 
-            if (visitor.IsProcedure && !visitor.HasSetNoCountOn)
+            if (visitor.IsProcedure && !visitor.HasSetNoCountOn && _settings!.Rules.NotUsingSpNoCount != AnalysisStatus.Passed)
                 results.Add(new AnalysisResult(
                     "SET NOCOUNT ON",
-                    AnalysisStatus.Failed,
+                    _settings.Rules.NotUsingSpNoCount,
                     "Stored Procedure does not contain ‘SET NOCOUNT ON’. It is recommended to add it."));
-            else if (visitor.IsProcedure && visitor.HasSetNoCountOn)
+            else if (visitor.IsProcedure && visitor.HasSetNoCountOn && _settings!.Rules.NotUsingSpNoCount != AnalysisStatus.Passed)
                 results.Add(new AnalysisResult(
                     "SET NOCOUNT ON",
                     AnalysisStatus.Successfull,
@@ -195,20 +198,20 @@ END
 
             results.AddRange(visitor.Results);
 
-            if (visitor.FoundTempTables.Count > 0)
+            if (visitor.FoundTempTables.Count > 0 && _settings!.Rules.UsingTempTable != AnalysisStatus.Passed)
                 foreach (var (TableName, Line) in visitor.FoundTempTables)
                     results.Add(new AnalysisResult(
                         "#TempTable usage",
-                        AnalysisStatus.Info,
+                        _settings.Rules.UsingTempTable,
                         $"#TempTable usage detected: '{TableName}'",
                         Line));
 
 
-            if (visitor.FoundTableVariables.Count > 0)
+            if (visitor.FoundTableVariables.Count > 0 && _settings!.Rules.UsingVariableTable != AnalysisStatus.Passed)
                 foreach (var (VariableName, Line) in visitor.FoundTableVariables)
                     results.Add(new AnalysisResult(
                         "@VariableTable usage",
-                        AnalysisStatus.Info,
+                        _settings.Rules.UsingVariableTable,
                         $"@VariableTable usage detected: '{VariableName}'",
                         Line));
         }
