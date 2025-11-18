@@ -1,4 +1,4 @@
-﻿namespace SqlChecker;
+﻿namespace MsSqlAnalyze;
 
 public class Settings
 {

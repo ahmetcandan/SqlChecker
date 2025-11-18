@@ -1,6 +1,6 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
 
-namespace SqlChecker;
+namespace MsSqlAnalyze;
 
 internal class ColumnFinderVisitor : TSqlFragmentVisitor
 {

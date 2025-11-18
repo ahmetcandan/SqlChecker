@@ -1,9 +1,9 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System.Data;
 
-namespace SqlChecker;
+namespace MsSqlAnalyze;
 
-internal class SqlAnalysisVisitor(Settings settings) : TSqlFragmentVisitor
+public class SqlAnalysisVisitor(Settings settings) : TSqlFragmentVisitor
 {
     public List<AnalysisResult> Results { get; } = [];
     public List<(string TableName, int Line)> FoundTempTables { get; } = [];

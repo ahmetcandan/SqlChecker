@@ -1,4 +1,4 @@
-﻿namespace SqlChecker;
+﻿namespace MsSqlAnalyze;
 
 internal enum DmlContext
 {

@@ -1,11 +1,10 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
+using MsSqlAnalyze;
 using System.ComponentModel;
 using System.Data;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Xml;
 
 namespace SqlChecker;
@@ -103,8 +102,11 @@ END
         SetCursorWait(true);
         var analysisResults = AnalyzeSql(sqlInputBox.Text);
         var xml = await GetEstimatedExecutionPlan();
-        var result = ExecutionPlanAnalize.AnalyzeExecutionPlan(xml);
-        analysisResults.AddRange(result);
+        if (!string.IsNullOrEmpty(xml))
+        {
+            var result = ExecutionPlanAnalize.AnalyzeExecutionPlan(xml);
+            analysisResults.AddRange(result);
+        }
 
         resultsGrid.DataSource = new BindingList<AnalysisResult>([.. analysisResults.OrderBy(c => c.LineNumber)]);
         HighlightResultsGrid();
@@ -229,11 +231,11 @@ END
         }
         catch (SqlException ex)
         {
-            MessageBox.Show($"SQL error: {ex.Message}", "Error");
+            MessageBox.Show($"SQL error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"General error: {ex.Message}", "Error");
+            MessageBox.Show($"General error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         return [];
@@ -269,12 +271,12 @@ END
         }
         catch (SqlException ex)
         {
-            MessageBox.Show($"SQL Hatası oluştu: {ex.Message}", "Error");
+            MessageBox.Show($"SQL error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             throw;
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Genel bir hata oluştu: {ex.Message}", "Error");
+            MessageBox.Show($"General error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             throw;
         }
 
@@ -324,9 +326,11 @@ END
 
     private async void CmbObjectName_SelectedIndexChanged(object sender, EventArgs e)
     {
+        SetCursorWait(true);
         await GetObjectText();
         btnRefreshObj.Enabled = !string.IsNullOrEmpty(cmbObjectName.Text);
         btnReview.Enabled = !string.IsNullOrEmpty(cmbObjectName.Text);
+        SetCursorWait(false);
     }
 
     private async Task GetObjectText()
@@ -345,10 +349,10 @@ END
 
     private async void BtnRefreshObj_Click(object sender, EventArgs e)
     {
+        SetCursorWait(true);
         if (string.IsNullOrEmpty(cmbObjectName.Text))
             return;
 
-        SetCursorWait(true);
         await GetObjectText();
         SetCursorWait(false);
     }
@@ -378,30 +382,38 @@ END
         sqlInputBox.Select(startIndex, sqlInputBox.Lines[index].Length);
     }
 
-    private async Task<string> GetEstimatedExecutionPlan()
+    private async Task<string?> GetEstimatedExecutionPlan()
     {
-        using var connection = new SqlConnection(_settings?.ConnectionString);
-        await Task.Run(connection.OpenAsync);
+        try
+        {
+            using var connection = new SqlConnection(_settings?.ConnectionString);
+            await Task.Run(connection.OpenAsync);
 
-        using var execCommand = new SqlCommand(_sqlQuery_SpExecWithParameter, connection);
-        execCommand.Parameters.AddWithValue("@SpName", cmbObjectName.Text);
-        execCommand.Parameters.AddWithValue("@SchemaName", cmbScheme.Text);
-        var commandText = await Task.Run(execCommand.ExecuteScalarAsync);
+            using var execCommand = new SqlCommand(_sqlQuery_SpExecWithParameter, connection);
+            execCommand.Parameters.AddWithValue("@SpName", cmbObjectName.Text);
+            execCommand.Parameters.AddWithValue("@SchemaName", cmbScheme.Text);
+            var commandText = await Task.Run(execCommand.ExecuteScalarAsync);
 
-        using var xmlOnCommand = new SqlCommand("SET SHOWPLAN_XML ON;", connection);
-        await Task.Run(xmlOnCommand.ExecuteNonQueryAsync);
+            using var xmlOnCommand = new SqlCommand("SET SHOWPLAN_XML ON;", connection);
+            await Task.Run(xmlOnCommand.ExecuteNonQueryAsync);
 
-        using var command = new SqlCommand(commandText?.ToString(), connection);
-        using XmlReader reader = await Task.Run(command.ExecuteXmlReaderAsync);
-        var sb = new StringBuilder();
-        while (await Task.Run(reader.ReadAsync))
-            if (reader.NodeType == XmlNodeType.Element || reader.NodeType == XmlNodeType.Text)
-                sb.Append(reader.ReadOuterXml());
+            using var command = new SqlCommand(commandText?.ToString(), connection);
+            using XmlReader reader = await Task.Run(command.ExecuteXmlReaderAsync);
+            var sb = new StringBuilder();
+            while (await Task.Run(reader.ReadAsync))
+                if (reader.NodeType == XmlNodeType.Element || reader.NodeType == XmlNodeType.Text)
+                    sb.Append(reader.ReadOuterXml());
 
-        using var xmlOffCommand = new SqlCommand("SET SHOWPLAN_XML OFF;", connection);
-        await Task.Run(xmlOffCommand.ExecuteNonQueryAsync);
+            using var xmlOffCommand = new SqlCommand("SET SHOWPLAN_XML OFF;", connection);
+            await Task.Run(xmlOffCommand.ExecuteNonQueryAsync);
 
-        return sb.ToString();
+            return sb.ToString();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Estimated Execution Plan could not be retrieved: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return null;
+        }
     }
 
     private void SetCursorWait(bool isWait)

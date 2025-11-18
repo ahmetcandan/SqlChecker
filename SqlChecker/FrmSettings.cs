@@ -1,4 +1,6 @@
-﻿namespace SqlChecker;
+﻿using MsSqlAnalyze;
+
+namespace SqlChecker;
 
 public partial class FrmSettings : Form
 {
@@ -7,13 +9,12 @@ public partial class FrmSettings : Form
     public FrmSettings(Settings? settings = null)
     {
         InitializeComponent();
-        if (settings is not null)
-            Settings = new()
+        Settings = settings is not null
+            ? new()
             {
                 ConnectionString = settings.ConnectionString
-            };
-        else
-            Settings = new();
+            }
+            : new();
         DialogResult = DialogResult.Cancel;
     }
 
@@ -25,8 +26,5 @@ public partial class FrmSettings : Form
         Close();
     }
 
-    private void FrmSettings_Load(object sender, EventArgs e)
-    {
-        txtConnectionString.Text = Settings?.ConnectionString;
-    }
+    private void FrmSettings_Load(object sender, EventArgs e) => txtConnectionString.Text = Settings?.ConnectionString;
 }

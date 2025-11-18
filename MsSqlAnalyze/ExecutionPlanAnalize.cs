@@ -1,6 +1,6 @@
 ﻿using System.Xml;
 
-namespace SqlChecker;
+namespace MsSqlAnalyze;
 
 public static class ExecutionPlanAnalize
 {
@@ -17,10 +17,9 @@ public static class ExecutionPlanAnalize
             var scanOperations = GetScanFinding(xmlDoc, namespaceManager)
                 .Union(GetWarningFinding(xmlDoc, namespaceManager));
 
-            if (scanOperations.Any())
-                return scanOperations;
-
-            return [new("Execution Plan", AnalysisStatus.Successfull, "Execution Plan was reviewed. No findings were identified.")];
+            return scanOperations.Any()
+                ? scanOperations
+                : [new("Execution Plan", AnalysisStatus.Successfull, "Execution Plan was reviewed. No findings were identified.")];
         }
         catch
         {
